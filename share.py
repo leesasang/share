@@ -35,7 +35,7 @@ DATABASE_URL = get_secret("DATABASE_URL", "sqlite:///mt_stock_game.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-ADMIN_PASSWORD = get_secret("ADMIN_PASSWORD", "1234")
+ADMIN_PASSWORD = get_secret("ADMIN_PASSWORD", "102938")
 
 TEAM_CODES = {
     "1팀": get_secret("TEAM1_CODE", "1111"),
@@ -265,7 +265,7 @@ LGY 엔터 소속 밴드 Blue Sound는 결국 소속사와 재계약 합의에 �
         "changes": {
             "LGY 엔터": [-50],
             "Codein": [50],
-            "가천전자": [200],
+            "가천전자": [400],
             "Gil bio": [-80],
             "Gasla": [50],
             "Ganoja": [20],
@@ -274,25 +274,32 @@ LGY 엔터 소속 밴드 Blue Sound는 결국 소속사와 재계약 합의에 �
     },
     5: {
         "title": "보너스 이벤트",
-        "summary": "예상치 못한 사고와 우주선 발사 실패",
+        "summary": "비행기 추락 사고, 우주선 폭발, Gil bio 해명 성공",
         "news": """
 보너스 이벤트가 발생했습니다.
 
 새로운 반도체 생산 공정을 개발한 박** 연구팀은
 Ganoja가 인수한 한국항공의 비행기를 타고 휴가를 가던 중
 불의의 사고로 비행기가 추락하며 모두 세상을 떠났다고 발표되었습니다.
-이로 인해 가천전자와 Ganoja 모두 큰 손해가 예상됩니다.
+이로 인해 가천전자와 Ganoja 모두 손해가 막심할 것이라는 전문가의 예측입니다.
 
-또한 Gasla의 대표 나일론 마스크씨가 설립한 우주회사 스페이스O가
-오늘 아침 시험 발사에 도전했으나,
-발사 10초 만에 우주선이 폭파하며 전문가와 대중의 비판을 받고 있습니다.
-전문가들은 이 손해가 Gasla에도 큰 악영향을 줄 것으로 전망합니다.
+또한 Gasla의 대표 나일론 마스크씨의 우주회사인 스페이스O가
+오늘 아침 시험 발사에 도전했다고 합니다.
+하지만 발사 도중 스페이스O의 우주선이 발사 10초 만에 하늘에서 폭파하며,
+많은 전문가와 대중들의 비판을 한 몸에 받고 있습니다.
+전문가들은 이 손해가 Gasla에게도 전해질 것이라는 전망입니다.
+
+한편 Gil bio는 부작용이 백신에서 나온 것이 아니라는 해명을 발표했습니다.
+Gil bio 측은 원래 지병이 있던 사람들에게 이 백신이 치명적일 수 있다는 사실을
+미리 공지하였고, 이를 무시하고 백신을 접종받은 사람들의 책임이라고 주장했습니다.
+전문가들 또한 이 주장이 사실일 가능성이 높다고 평가하며,
+Gil bio는 억울했던 누명을 벗을 수 있게 되었습니다.
 """,
         "changes": {
             "LGY 엔터": [],
             "Codein": [],
             "가천전자": [-30],
-            "Gil bio": [],
+            "Gil bio": [50],
             "Gasla": [-60],
             "Ganoja": [-60],
             "코텐도": [],
@@ -639,7 +646,57 @@ def fetch_one(sql, params=None):
 
 
 # =========================================================
-# 5. DB initialization
+# 5. Utility
+# =========================================================
+
+def now_text():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def money(value):
+    return f"{int(round(value)):,}원"
+
+
+def percent_text(value):
+    return f"{value:+.2f}%"
+
+
+def percent_class(value):
+    if value > 0:
+        return "up"
+    if value < 0:
+        return "down"
+    return "same"
+
+
+def normalize_changes(changes):
+    if changes is None:
+        return []
+    if isinstance(changes, list):
+        return changes
+    return [changes]
+
+
+def apply_change_sequence(price, changes):
+    result = float(price)
+
+    for rate in normalize_changes(changes):
+        result = result * (1 + rate / 100)
+
+    return int(round(result))
+
+
+def format_changes(changes):
+    changes = normalize_changes(changes)
+
+    if not changes:
+        return "변동 없음"
+
+    return " → ".join([f"{rate:+g}%" for rate in changes])
+
+
+# =========================================================
+# 6. DB initialization
 # =========================================================
 
 def create_tables():
@@ -805,54 +862,8 @@ def init_db():
 
 
 # =========================================================
-# 6. Calculation helpers
+# 7. Data getters
 # =========================================================
-
-def now_text():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def money(value):
-    return f"{int(round(value)):,}원"
-
-
-def percent_text(value):
-    return f"{value:+.2f}%"
-
-
-def percent_class(value):
-    if value > 0:
-        return "up"
-    if value < 0:
-        return "down"
-    return "same"
-
-
-def normalize_changes(changes):
-    if changes is None:
-        return []
-    if isinstance(changes, list):
-        return changes
-    return [changes]
-
-
-def apply_change_sequence(price, changes):
-    result = float(price)
-
-    for rate in normalize_changes(changes):
-        result = result * (1 + rate / 100)
-
-    return int(round(result))
-
-
-def format_changes(changes):
-    changes = normalize_changes(changes)
-
-    if not changes:
-        return "변동 없음"
-
-    return " → ".join([f"{rate:+g}%" for rate in changes])
-
 
 def get_current_notice():
     row = fetch_one("SELECT current_notice FROM game_state WHERE id = 1")
@@ -868,10 +879,6 @@ def get_next_notice():
 
     return next_notice
 
-
-# =========================================================
-# 7. Data getters
-# =========================================================
 
 def get_stocks_df():
     rows = fetch_all("""
@@ -1436,51 +1443,6 @@ def render_all_chart():
     st.line_chart(chart_df, use_container_width=True)
 
 
-def smooth_stock_chart_data(stock_name, steps_per_segment=20):
-    chart_df = get_stock_chart_df(stock_name)
-
-    if chart_df.empty or len(chart_df) == 1:
-        return chart_df
-
-    points = []
-
-    notices = list(chart_df.index)
-    prices = list(chart_df[stock_name])
-
-    for idx in range(len(notices) - 1):
-        start_notice = notices[idx]
-        end_notice = notices[idx + 1]
-        start_price = prices[idx]
-        end_price = prices[idx + 1]
-
-        for step in range(steps_per_segment):
-            ratio = step / steps_per_segment
-            x = start_notice + (end_notice - start_notice) * ratio
-            y = start_price + (end_price - start_price) * ratio
-            points.append({"공시": x, stock_name: y})
-
-    points.append({"공시": notices[-1], stock_name: prices[-1]})
-
-    smooth_df = pd.DataFrame(points)
-    smooth_df = smooth_df.set_index("공시")
-
-    return smooth_df
-
-
-def render_animated_stock_chart(stock_name):
-    smooth_df = smooth_stock_chart_data(stock_name)
-
-    if smooth_df.empty:
-        st.info("아직 차트 데이터가 없습니다.")
-        return
-
-    placeholder = st.empty()
-
-    for i in range(2, len(smooth_df) + 1):
-        placeholder.line_chart(smooth_df.iloc[:i], use_container_width=True)
-        time.sleep(0.035)
-
-
 def render_static_stock_chart(stock_name):
     chart_df = get_stock_chart_df(stock_name)
 
@@ -1600,33 +1562,6 @@ def admin_page(view_mode):
 
     st.divider()
 
-    st.markdown('<div class="section-title">종목별 개별 차트</div>', unsafe_allow_html=True)
-    st.caption("아래 종목 버튼을 누르면 해당 종목의 차트가 천천히 변화하는 방식으로 표시됩니다.")
-
-    if view_mode == "모바일":
-        for stock_name in STOCK_ORDER:
-            if st.button(stock_name, key=f"admin_chart_{stock_name}", use_container_width=True):
-                render_animated_stock_chart(stock_name)
-    else:
-        cols = st.columns(4)
-
-        clicked_stock = None
-
-        for idx, stock_name in enumerate(STOCK_ORDER):
-            with cols[idx % 4]:
-                if st.button(stock_name, key=f"admin_chart_{stock_name}", use_container_width=True):
-                    clicked_stock = stock_name
-
-        if clicked_stock:
-            render_animated_stock_chart(clicked_stock)
-        else:
-            st.info("차트를 보고 싶은 종목을 선택하세요.")
-
-    st.divider()
-
-    with st.expander("전체 주가 차트 보기"):
-        render_all_chart()
-
     with st.expander("전체 거래 기록 보기"):
         trade_df = get_trade_history_df()
 
@@ -1647,6 +1582,142 @@ def admin_page(view_mode):
                 st.rerun()
             else:
                 st.error("'초기화'라고 정확히 입력해야 합니다.")
+
+
+def spectator_page(view_mode):
+    render_status()
+
+    st.markdown('<div class="section-title">관전자 페이지</div>', unsafe_allow_html=True)
+
+    current_notice = get_current_notice()
+    current_notice_data = ANNOUNCEMENTS[current_notice]
+
+    if view_mode == "모바일":
+        card("현재 공시", current_notice_data["title"], current_notice_data["summary"])
+    else:
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            card("현재 공시", current_notice_data["title"], current_notice_data["summary"])
+
+        with col2:
+            next_notice = get_next_notice()
+
+            if next_notice is None:
+                card("다음 공시", "없음", "모든 공시가 종료되었습니다.")
+            else:
+                card("다음 공시", ANNOUNCEMENTS[next_notice]["title"], ANNOUNCEMENTS[next_notice]["summary"])
+
+    st.divider()
+
+    tab_all, tab_single, tab_rank = st.tabs([
+        "전체 종목 차트",
+        "종목별 상세 차트",
+        "팀 순위",
+    ])
+
+    with tab_all:
+        st.markdown('<div class="section-title">전체 종목 주가 흐름</div>', unsafe_allow_html=True)
+        st.caption("모든 종목의 공시별 가격 변화를 한 번에 확인할 수 있습니다.")
+        render_all_chart()
+
+        st.markdown('<div class="section-title">현재 종목 가격</div>', unsafe_allow_html=True)
+
+        stocks_df = get_stocks_df()
+
+        if stocks_df.empty:
+            st.info("종목 데이터가 없습니다.")
+        else:
+            display_df = stocks_df.rename(columns={
+                "stock_name": "종목",
+                "description": "기업 설명",
+                "initial_price": "시작가",
+                "current_price": "현재가",
+            })
+
+            display_df["시작가"] = display_df["시작가"].apply(money)
+            display_df["현재가"] = display_df["현재가"].apply(money)
+
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    with tab_single:
+        st.markdown('<div class="section-title">종목별 상세 차트</div>', unsafe_allow_html=True)
+        st.caption("종목을 선택하면 해당 종목의 가격 흐름만 볼 수 있습니다.")
+
+        selected_stock = st.selectbox(
+            "종목 선택",
+            STOCK_ORDER,
+            key="spectator_stock_select",
+        )
+
+        stocks_df = get_stocks_df()
+        selected_info = stocks_df[stocks_df["stock_name"] == selected_stock]
+
+        if not selected_info.empty:
+            row = selected_info.iloc[0]
+            initial_price = row["initial_price"]
+            current_price = row["current_price"]
+            change_rate = ((current_price - initial_price) / initial_price) * 100
+            cls = percent_class(change_rate)
+
+            if view_mode == "모바일":
+                card("기업명", selected_stock, row["description"])
+                card("시작가", money(initial_price), "게임 시작 기준 가격")
+                st.markdown(
+                    f"""
+                    <div class="card">
+                        <div class="metric-label">현재가</div>
+                        <div class="metric-value">{money(current_price)}</div>
+                        <div class="metric-sub">시작가 대비 <span class="{cls}">{percent_text(change_rate)}</span></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                c1, c2, c3 = st.columns(3)
+
+                with c1:
+                    card("기업명", selected_stock, row["description"])
+
+                with c2:
+                    card("시작가", money(initial_price), "게임 시작 기준 가격")
+
+                with c3:
+                    st.markdown(
+                        f"""
+                        <div class="card">
+                            <div class="metric-label">현재가</div>
+                            <div class="metric-value">{money(current_price)}</div>
+                            <div class="metric-sub">시작가 대비 <span class="{cls}">{percent_text(change_rate)}</span></div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+        st.markdown('<div class="section-title">개별 주가 차트</div>', unsafe_allow_html=True)
+        render_static_stock_chart(selected_stock)
+
+        st.markdown('<div class="section-title">공시별 가격 기록</div>', unsafe_allow_html=True)
+
+        history_df = get_price_history_df(selected_stock)
+
+        if history_df.empty:
+            st.info("가격 기록이 없습니다.")
+        else:
+            history_df = history_df.rename(columns={
+                "notice_index": "공시",
+                "stock_name": "종목",
+                "price": "가격",
+            })
+
+            history_df["공시"] = history_df["공시"].apply(lambda x: f"{x}차 공시")
+            history_df["가격"] = history_df["가격"].apply(money)
+
+            st.dataframe(history_df, use_container_width=True, hide_index=True)
+
+    with tab_rank:
+        st.markdown('<div class="section-title">현재 팀 순위</div>', unsafe_allow_html=True)
+        st.dataframe(get_ranking_df(), use_container_width=True, hide_index=True)
 
 
 def team_page(team_name, view_mode):
@@ -1813,7 +1884,7 @@ def render_sidebar():
 
     role = st.sidebar.radio(
         "접속 페이지",
-        ["운영자", "1팀", "2팀", "3팀"],
+        ["운영자", "관전자", "1팀", "2팀", "3팀"],
     )
 
     view_mode = st.sidebar.radio(
@@ -1840,6 +1911,8 @@ def main():
 
     if role == "운영자":
         admin_page(view_mode)
+    elif role == "관전자":
+        spectator_page(view_mode)
     else:
         team_page(role, view_mode)
 
